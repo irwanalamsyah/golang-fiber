@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -88,7 +91,7 @@ func TestRouteParameter(t *testing.T) {
 func TestFormRequest(t *testing.T) {
 	app.Post("/hello", func(ctx *fiber.Ctx) error {
 		name := ctx.FormValue("name")
-		return ctx.SendString("Hello "+ name)
+		return ctx.SendString("Hello " + name)
 	})
 
 	body := strings.NewReader("name=Irwan")
@@ -100,4 +103,37 @@ func TestFormRequest(t *testing.T) {
 	bytes, err := io.ReadAll(response.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, "Hello Irwan", string(bytes))
+}
+
+//go:embed source/contoh.txt
+var contohFile []byte
+
+func TestMultipartForm(t *testing.T) {
+	app.Post("/upload", func(ctx *fiber.Ctx) error {
+		file, err := ctx.FormFile("file")
+		if err != nil {
+			return err
+		}
+
+		err = ctx.SaveFile(file, "./target/"+file.Filename)
+		if err != nil {
+			return err
+		}
+
+		return ctx.SendString("Upload Success")
+	})
+
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+	file, _ := writer.CreateFormFile("file", "contoh.txt")
+	file.Write(contohFile)
+	writer.Close()
+
+	request := httptest.NewRequest("POST", "/upload", body)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "Upload Success", string(bytes))
 }

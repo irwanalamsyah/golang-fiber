@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -82,4 +83,21 @@ func TestRouteParameter(t *testing.T) {
 	assert.Equal(t, 200, response.StatusCode)
 	bytes, err := io.ReadAll(response.Body)
 	assert.Equal(t, "Get Order 10 From User irwan", string(bytes))
+}
+
+func TestFormRequest(t *testing.T) {
+	app.Post("/hello", func(ctx *fiber.Ctx) error {
+		name := ctx.FormValue("name")
+		return ctx.SendString("Hello "+ name)
+	})
+
+	body := strings.NewReader("name=Irwan")
+	request := httptest.NewRequest("POST", "/hello", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	assert.Equal(t, 200, response.StatusCode)
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "Hello Irwan", string(bytes))
 }

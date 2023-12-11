@@ -149,10 +149,10 @@ func TestRequestBody(t *testing.T) {
 		body := ctx.Body()
 		request := new(LoginRequest)
 		err := json.Unmarshal(body, request)
-		if err != nil{
+		if err != nil {
 			return err
 		}
-		return ctx.SendString("Login Success "+ request.Username)
+		return ctx.SendString("Login Success " + request.Username)
 	})
 
 	body := strings.NewReader(`{"username": "Irwan", "password":"rahasia"}`)
@@ -169,18 +169,18 @@ func TestRequestBody(t *testing.T) {
 type RegisterRequest struct {
 	Username string `json:"username" xml:"username" form:"username"`
 	Password string `json:"password" xml:"password" form:"password"`
-	Name string `json:"name" xml:"name" form:"name"`
+	Name     string `json:"name" xml:"name" form:"name"`
 }
 
 func TestBodyParser(t *testing.T) {
 	app.Post("/register", func(ctx *fiber.Ctx) error {
 		request := new(RegisterRequest)
 		err := ctx.BodyParser(request)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 
-		return ctx.SendString("Register Success "+request.Username)
+		return ctx.SendString("Register Success " + request.Username)
 	})
 }
 
@@ -209,5 +209,39 @@ func TestBodyParserForm(t *testing.T) {
 	bytes, err := io.ReadAll(response.Body)
 	assert.Nil(t, err)
 	assert.Equal(t, "Register Success Irwan", string(bytes))
+}
 
+func TestBodyParserXML(t *testing.T) {
+	TestBodyParser(t)
+
+	body := strings.NewReader(
+		`<RegisterRequest>
+				<username>Irwan</username>
+				<password>rahasia</password>
+				<name>Irwan Alamsyah</name>
+			</RegisterRequest>`)
+
+	request := httptest.NewRequest("POST", "/register", body)
+	request.Header.Set("Content-Type", "application/xml")
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, "Register Success Irwan", string(bytes))
+}
+
+func TestResponseJSON(t *testing.T) {
+	app.Get("/user", func(ctx *fiber.Ctx) error {
+		return ctx.JSON(fiber.Map{
+			"username": "irwanalamsyah",
+			"name": "Irwan Alamsyah",
+		})
+	})
+
+	request := httptest.NewRequest("GET", "/user", nil)
+	response, err := app.Test(request)
+	assert.Nil(t, err)
+	bytes, err := io.ReadAll(response.Body)
+	assert.Nil(t, err)
+	assert.Equal(t, `{"name":"Irwan Alamsyah","username":"irwanalamsyah"}`, string(bytes))
 }
